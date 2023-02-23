@@ -4,7 +4,7 @@ from MeowerBot import Bot
 import requests
 import os
 import time
-import subprocess
+#import subprocess
 
 # Version tracker
 version = "1.1"
@@ -22,10 +22,16 @@ tickets = dict()
 def restart():
     print("Shutting down websocket")
     meowyMod.wss.stop()
-
-    script = os.getenv("RESET_SCRIPT").split()
+    
+    # Windows only
+    #script = os.getenv("RESET_SCRIPT").split()
+    #print(f"Running reset script: {script}")
+    #subprocess.Popen(script, shell=True)
+    
+    # Linux
+    script = os.getenv("RESET_SCRIPT")
     print(f"Running reset script: {script}")
-    subprocess.Popen(script, shell=True)
+    os.system(script)
 
     print(f"MeowyMod {version} going away now...")
     exit()
