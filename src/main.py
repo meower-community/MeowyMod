@@ -173,10 +173,14 @@ def updateCheck(ctx):
     match getUserLevel(ctx):
         case 4:
             # Check for updates
-            if not updater.isUpToDate("./main.py", "https://raw.githubusercontent.com/MeowerBots/MeowyMod/main/src/main.py"):
+            if not updater.isUpToDate(f"{os.getenv('SCRIPT_PATH')}/main.py", "https://raw.githubusercontent.com/MeowerBots/MeowyMod/main/src/main.py"):
                 ctx.send_msg("Looks like I'm out-of-date! Downloading updates...")
-                updater.update("./main.py", "https://raw.githubusercontent.com/MeowerBots/MeowyMod/main/src/main.py")
-                ctx.send_msg("Applying updates...")
+                time.sleep(1)
+                
+                updater.update(f"{os.getenv('SCRIPT_PATH')}/main.py", "https://raw.githubusercontent.com/MeowerBots/MeowyMod/main/src/main.py")
+                
+                ctx.send_msg("Rebooting to apply updates...")
+                time.sleep(1)
                 restart()
             else:
                 ctx.send_msg(f"Looks like I'm up-to-date! Running v{version} right now.")
@@ -185,7 +189,7 @@ def updateCheck(ctx):
 
 
 @meowyMod.command(args=0, aname="reboot")
-def updateCheck(ctx):
+def rebootScript(ctx):
     match getUserLevel(ctx):
         case 4:
             ctx.send_msg("Oke! I'm rebooting now...")
@@ -195,7 +199,7 @@ def updateCheck(ctx):
 
 
 @meowyMod.command(args=0, aname="shutdown")
-def updateCheck(ctx):
+def shutdownScript(ctx):
     match getUserLevel(ctx):
         case 4:
             ctx.send_msg("Goodbye! I'm shutting down now...")
