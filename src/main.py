@@ -4,10 +4,9 @@ from MeowerBot import Bot
 import requests
 import os
 import time
-#import subprocess
 
 # Version tracker
-version = "1.1.0"
+version = "1.1.1"
 
 # Create instance of bot
 meowyMod = Bot()
@@ -18,17 +17,12 @@ userLevels = dict()
 # Keep track of processing requests
 tickets = dict()
 
+
 # Restart script
 def restart():
     print("Shutting down websocket")
     meowyMod.wss.stop()
-    
-    # Windows only
-    #script = os.getenv("RESET_SCRIPT").split()
-    #print(f"Running reset script: {script}")
-    #subprocess.Popen(script, shell=True)
-    
-    # Linux
+
     script = os.getenv("RESET_SCRIPT")
     print(f"Running reset script: {script}")
     os.system(script)
@@ -106,106 +100,93 @@ def refresh(ctx):
 
 @meowyMod.command(args=1, aname="kick")
 def kickUser(ctx, username):
-    match getUserLevel(ctx):
-        case 4:
-            # Create new request ticket
-            ticketID = registerNewTicket(ctx, username, "kick")
+    if getUserLevel(ctx) >= 1:
+        # Create new request ticket
+        ticketID = registerNewTicket(ctx, username, "kick")
 
-            meowyMod.wss.sendPacket({"cmd": "direct", "val": {"cmd": "kick", "val": username}, "listener": ticketID})
-        case _:
-            ctx.send_msg(f"You don't have permissions to do that so I ignored your request, {ctx.user.username}.")
+        meowyMod.wss.sendPacket({"cmd": "direct", "val": {"cmd": "kick", "val": username}, "listener": ticketID})
+    else:
+        ctx.send_msg(f"You don't have permissions to do that so I ignored your request, {ctx.user.username}.")
 
 
 @meowyMod.command(args=1, aname="ban")
 def banUser(ctx, username):
-    match getUserLevel(ctx):
-        case 4:
-            # Create new request ticket
-            ticketID = registerNewTicket(ctx, username, "ban")
+    if getUserLevel(ctx) >= 1:
+        # Create new request ticket
+        ticketID = registerNewTicket(ctx, username, "ban")
 
-            meowyMod.wss.sendPacket({"cmd": "direct", "val": {"cmd": "ban", "val": username}, "listener": ticketID})
-        case _:
-            ctx.send_msg(
-                f"You don't have permissions to do that so I ignored your request, {ctx.user.username}.")
+        meowyMod.wss.sendPacket({"cmd": "direct", "val": {"cmd": "ban", "val": username}, "listener": ticketID})
+    else:
+        ctx.send_msg(f"You don't have permissions to do that so I ignored your request, {ctx.user.username}.")
 
 
 @meowyMod.command(args=1, aname="ipban")
 def ipBanUser(ctx, username):
-    match getUserLevel(ctx):
-        case 4:
-            # Create new request ticket
-            ticketID = registerNewTicket(ctx, username, "ipban")
+    if getUserLevel(ctx) >= 2:
+        # Create new request ticket
+        ticketID = registerNewTicket(ctx, username, "ipban")
 
-            meowyMod.wss.sendPacket({"cmd": "direct", "val": {"cmd": "block", "val": username}, "listener": ticketID})
-        case _:
-            ctx.send_msg(
-                f"You don't have permissions to do that so I ignored your request, {ctx.user.username}.")
+        meowyMod.wss.sendPacket({"cmd": "direct", "val": {"cmd": "block", "val": username}, "listener": ticketID})
+    else:
+        ctx.send_msg(f"You don't have permissions to do that so I ignored your request, {ctx.user.username}.")
 
 
 @meowyMod.command(args=1, aname="pardon")
 def pardonUser(ctx, username):
-    match getUserLevel(ctx):
-        case 4:
-            # Create new request ticket
-            ticketID = registerNewTicket(ctx, username, "pardon")
+    if getUserLevel(ctx) >= 1:
+        # Create new request ticket
+        ticketID = registerNewTicket(ctx, username, "pardon")
 
-            meowyMod.wss.sendPacket({"cmd": "direct", "val": {"cmd": "pardon", "val": username}, "listener": ticketID})
-        case _:
-            ctx.send_msg(
-                f"You don't have permissions to do that so I ignored your request, {ctx.user.username}.")
+        meowyMod.wss.sendPacket({"cmd": "direct", "val": {"cmd": "pardon", "val": username}, "listener": ticketID})
+    else:
+        ctx.send_msg(f"You don't have permissions to do that so I ignored your request, {ctx.user.username}.")
 
 
 @meowyMod.command(args=1, aname="ippardon")
 def ipPardonUser(ctx, username):
-    match getUserLevel(ctx):
-        case 4:
-            # Create new request ticket
-            ticketID = registerNewTicket(ctx, username, "ippardon")
+    if getUserLevel(ctx) >= 2:
+        # Create new request ticket
+        ticketID = registerNewTicket(ctx, username, "ippardon")
 
-            meowyMod.wss.sendPacket({"cmd": "direct", "val": {"cmd": "unblock", "val": username}, "listener": ticketID})
-        case _:
-            ctx.send_msg(
-                f"You don't have permissions to do that so I ignored your request, {ctx.user.username}.")
+        meowyMod.wss.sendPacket({"cmd": "direct", "val": {"cmd": "unblock", "val": username}, "listener": ticketID})
+    else:
+        ctx.send_msg(f"You don't have permissions to do that so I ignored your request, {ctx.user.username}.")
 
 
 @meowyMod.command(args=0, aname="update")
 def updateCheck(ctx):
-    match getUserLevel(ctx):
-        case 4:
-            # Check for updates
-            if not updater.isUpToDate(f"{os.getenv('SCRIPT_PATH')}/main.py", "https://raw.githubusercontent.com/MeowerBots/MeowyMod/main/src/main.py"):
-                ctx.send_msg("Looks like I'm out-of-date! Downloading updates...")
-                time.sleep(1)
-                
-                updater.update(f"{os.getenv('SCRIPT_PATH')}/main.py", "https://raw.githubusercontent.com/MeowerBots/MeowyMod/main/src/main.py")
-                
-                ctx.send_msg("Rebooting to apply updates...")
-                time.sleep(1)
-                restart()
-            else:
-                ctx.send_msg(f"Looks like I'm up-to-date! Running v{version} right now.")
-        case _:
-            ctx.send_msg(f"You don't have permissions to do that so I ignored your request, {ctx.user.username}.")
+    if getUserLevel(ctx) == 4:
+        # Check for updates, but better(ish)
+        versionHistory = requests.get("https://raw.githubusercontent.com/MeowerBots/MeowyMod/main/versionInfo.json").json()
+        if version not in versionHistory["latest"] or version in versionHistory["old"]:
+            ctx.send_msg(f"Looks like I'm out-of-date! Latest version(s) are {versionHistory['latest']} while I'm on {version}. Downloading updates...")
+            time.sleep(1)
+            updater.update(f"{os.getcwd()}/main.py", "https://raw.githubusercontent.com/MeowerBots/MeowyMod/main/src/main.py")
+            ctx.send_msg("Rebooting to apply updates...")
+            time.sleep(1)
+            restart()
+        else:
+            ctx.send_msg(f"Looks like I'm up-to-date! Running v{version} right now.")
+    else:
+        ctx.send_msg(f"You don't have permissions to do that so I ignored your request, {ctx.user.username}.")
 
 
 @meowyMod.command(args=0, aname="reboot")
 def rebootScript(ctx):
-    match getUserLevel(ctx):
-        case 4:
-            ctx.send_msg("Oke! I'm rebooting now...")
-            restart()
-        case _:
-            ctx.send_msg(f"You don't have permissions to do that so I ignored your request, {ctx.user.username}.")
+    if getUserLevel(ctx) == 4:
+        ctx.send_msg("Oke! I'm rebooting now...")
+        restart()
+    else:
+        ctx.send_msg(f"You don't have permissions to do that so I ignored your request, {ctx.user.username}.")
 
 
 @meowyMod.command(args=0, aname="shutdown")
 def shutdownScript(ctx):
-    match getUserLevel(ctx):
-        case 4:
-            ctx.send_msg("Goodbye! I'm shutting down now...")
-            shutdown()
-        case _:
-            ctx.send_msg(f"You don't have permissions to do that so I ignored your request, {ctx.user.username}.")
+    if getUserLevel(ctx) == 4:
+        ctx.send_msg("Goodbye! I'm shutting down now...")
+        shutdown()
+    else:
+        ctx.send_msg(f"You don't have permissions to do that so I ignored your request, {ctx.user.username}.")
 
 
 # Listener management
@@ -229,6 +210,7 @@ if __name__ == "__main__":
         print("Failed to load .env keys, exiting.")
         exit()
 
+    # Register event listener for tickets and startup message
     meowyMod.callback(listenerEventManager, cbid="__raw__")
 
     print(f"MeowyMod {version} starting up now...")
