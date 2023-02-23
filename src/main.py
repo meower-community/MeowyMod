@@ -7,7 +7,7 @@ import time
 #import subprocess
 
 # Version tracker
-version = "1.1"
+version = "1.1.0"
 
 # Create instance of bot
 meowyMod = Bot()
