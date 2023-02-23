@@ -1,9 +1,13 @@
 from dotenv import load_dotenv
+import update_check as updater
 from MeowerBot import Bot
-import os
 import requests
+import os
 import time
-import json
+import subprocess
+
+# Version tracker
+version = "1.1"
 
 # Create instance of bot
 meowyMod = Bot()
@@ -14,6 +18,27 @@ userLevels = dict()
 # Keep track of processing requests
 tickets = dict()
 
+# Restart script
+def restart():
+    print("Shutting down websocket")
+    meowyMod.wss.stop()
+
+    script = os.getenv("RESET_SCRIPT").split()
+    print(f"Running reset script: {script}")
+    subprocess.Popen(script, shell=True)
+
+    print(f"MeowyMod {version} going away now...")
+    exit()
+
+
+# Shutdown script
+def shutdown():
+    print("Shutting down websocket")
+    meowyMod.wss.stop()
+
+    print(f"MeowyMod {version} going away now...")
+    exit()
+
 
 # Function for getting user permission level
 def getUserLevel(ctx):
@@ -23,6 +48,7 @@ def getUserLevel(ctx):
         data = response.json()
         userLevels[ctx.user.username] = data["lvl"]
     return userLevels[ctx.user.username]
+
 
 def registerNewTicket(ctx, username, method):
     ticketID = f"{method} {username} @{round(time.time())}"
@@ -38,24 +64,27 @@ def resolveTicket(ticketID, status):
     if not ticketID in tickets:
         print(f"Invalid ticket ID \"{ticketID}\", exiting resolveTicket method")
     print(f"Ticket \"{ticketID}\" resolving with status {status}")
-    meowyMod.send_msg(f"@{tickets[ticketID]['origin']} I have processed the request \"{ticketID}\" with result {status}!")
+    meowyMod.send_msg(
+        f"@{tickets[ticketID]['origin']} I have processed the request \"{ticketID}\" with result {status}!")
     del tickets[ticketID]
 
 
 # Commands
 @meowyMod.command(args=0, aname="meow")
 def quack(ctx):
-    ctx.send_msg("MeowyMod is here! Use @MeowyMod help for info!")
+    ctx.send_msg("Meow!")
 
 
 @meowyMod.command(args=0, aname="help")
 def help(ctx):
-    ctx.send_msg(" - help: this message.\n - meow: another fun message!\n - about: Learn a little about me!\n - refresh: Clean up my cached user levels!\n - kick (username)\n - ban (username)\n - ipban (username)\n - pardon (username)\n - ippardon (username)")
+    ctx.send_msg(
+        " - help: this message.\n - meow: another fun message!\n - about: Learn a little about me!\n - refresh: Clean up my cached user levels!\n - kick (username)\n - ban (username)\n - ipban (username)\n - pardon (username)\n - ippardon (username)\n - update\n - shutdown\n - reboot")
 
 
 @meowyMod.command(args=0, aname="about")
 def about(ctx):
-    ctx.send_msg("MeowyMod v1.0 \nCreated by @MikeDEV, built using @ShowierData9978's MeowerBot.py library! \n\nI'm a little orange cat with a squeaky toy hammer, and I'm here to keep Meower a safer place! Better watch out, only Meower Mods, Admins, and Sysadmins can use me!")
+    ctx.send_msg(
+        f"MeowyMod v{version} \nCreated by @MikeDEV, built using @ShowierData9978's MeowerBot.py library! \n\nI'm a little orange cat with a squeaky toy hammer, and I'm here to keep Meower a safer place! Better watch out, only Meower Mods, Admins, and Sysadmins can use me!")
 
 
 @meowyMod.command(args=0, aname="refresh")
@@ -133,15 +162,56 @@ def ipPardonUser(ctx, username):
                 f"You don't have permissions to do that so I ignored your request, {ctx.user.username}.")
 
 
-def handleTickets(post, bot):
+@meowyMod.command(args=0, aname="update")
+def updateCheck(ctx):
+    match getUserLevel(ctx):
+        case 4:
+            # Check for updates
+            if not updater.isUpToDate("./main.py", "https://raw.githubusercontent.com/MeowerBots/MeowyMod/main/src/main.py"):
+                ctx.send_msg("Looks like I'm out-of-date! Downloading updates...")
+                updater.update("./main.py", "https://raw.githubusercontent.com/MeowerBots/MeowyMod/main/src/main.py")
+                ctx.send_msg("Applying updates...")
+                restart()
+            else:
+                ctx.send_msg(f"Looks like I'm up-to-date! Running v{version} right now.")
+        case _:
+            ctx.send_msg(f"You don't have permissions to do that so I ignored your request, {ctx.user.username}.")
+
+
+@meowyMod.command(args=0, aname="reboot")
+def updateCheck(ctx):
+    match getUserLevel(ctx):
+        case 4:
+            ctx.send_msg("Oke! I'm rebooting now...")
+            restart()
+        case _:
+            ctx.send_msg(f"You don't have permissions to do that so I ignored your request, {ctx.user.username}.")
+
+
+@meowyMod.command(args=0, aname="shutdown")
+def updateCheck(ctx):
+    match getUserLevel(ctx):
+        case 4:
+            ctx.send_msg("Goodbye! I'm shutting down now...")
+            shutdown()
+        case _:
+            ctx.send_msg(f"You don't have permissions to do that so I ignored your request, {ctx.user.username}.")
+
+
+# Listener management
+def listenerEventManager(post, bot):
     # Validate keys
     for key in ["cmd", "val", "listener"]:
         if key not in post:
             return
 
     # Handle listeners
-    if post["cmd"] == "statuscode" and post["listener"] in tickets:
-        resolveTicket(post["listener"], post["val"])
+    if post["cmd"] == "statuscode":
+        if post["listener"] in tickets:
+            resolveTicket(post["listener"], post["val"])
+        elif post["listener"] == "__meowerbot__login" and post["val"] == "I:100 | OK":
+            bot.send_msg(f"MeowyMod v{version} is alive! Use @MeowyMod help for info!")
+
 
 if __name__ == "__main__":
     # Load environment keys
@@ -149,10 +219,10 @@ if __name__ == "__main__":
         print("Failed to load .env keys, exiting.")
         exit()
 
-    meowyMod.callback(handleTickets, cbid="__raw__")
-    
-    print("MeowyMod starting up now...")
-    
+    meowyMod.callback(listenerEventManager, cbid="__raw__")
+
+    print(f"MeowyMod {version} starting up now...")
+
     # Run bot
     meowyMod.run(
         username=os.getenv("BOT_USERNAME"),

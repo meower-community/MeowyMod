@@ -2,3 +2,4 @@ python-dotenv
 websocket-client
 websocket-server
 requests
+update-check
