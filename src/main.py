@@ -100,7 +100,7 @@ def quack(ctx):
 @meowyMod.command(args=0, aname="help")
 def help(ctx):
     ctx.send_msg(
-        " - help: this message.\n - meow: another fun message!\n - about: Learn a little about me!\n - setlevel (username) (user level)\n - kick (username)\n - ban (username)\n - ipban (username)\n - pardon (username)\n - ippardon (username)\n - update\n - shutdown\n - reboot")
+        " - help: this message.\n - meow: another fun message!\n - about: Learn a little about me!\n - setlevel (username) (user level)\n - kick (username)\n - ban (username)\n - ipban (username)\n - pardon (username)\n - ippardon (username)\n - update\n - shutdown\n - reboot\n - announce \"(message)\"\n - warn (username) \"(message)\"")
 
 
 @meowyMod.command(args=0, aname="about")
@@ -120,12 +120,22 @@ def modifySecurityLevel(ctx, username, user_level):
             ctx.send_msg(f"Sorry {ctx.user.username}, I am not allowed to modify my own permissions.")
             return
         
+        if username == "Discord":
+            ctx.send_msg(f"Sorry {ctx.user.username}, I am not allowed to modify the permissions of the Discord bridge.")
+            return
+        
         if not isUserValid(username):
             ctx.send_msg(f"Sorry {ctx.user.username}, I couldn't find the user \"{username}\", so I could not complete your request.")
+            return        
+        
+        try:
+            user_level = int(user_level)
+        except:
+            ctx.send_msg(f"Sorry {ctx.user.username}, But the userlevel {user_level} is invalid (not a number), so I could not complete your request. \n\nValid user levels are: \n0 - Normal user, \n1 - Low-level Moderator (Kicks/bans/pardons), \n2 - Mid-level Moderator (IP kicks/bans/pardons), \n3 - High-Level Moderator (Announcements), \n4 - Administrator.")
             return
         
         if (user_level < 0) or (user_level > 4):
-            ctx.send_msg(f"Sorry {ctx.user.username}, But the userlevel {user_level} is invalid, so I could not complete your request. \n\nValid user levels are: \n0 - Normal user, \n1 - Low-level Moderator (Kicks/bans/pardons), \n2 - Mid-level Moderator (IP kicks/bans/pardons), \n3 - High-Level moderator (Announcements), \n4 - Administrator.")
+            ctx.send_msg(f"Sorry {ctx.user.username}, But the userlevel {user_level} is invalid (out of range), so I could not complete your request. \n\nValid user levels are: \n0 - Normal user, \n1 - Low-level Moderator (Kicks/bans/pardons), \n2 - Mid-level Moderator (IP kicks/bans/pardons), \n3 - High-Level Moderator (Announcements), \n4 - Administrator.")
             return
         
         if (ctx.user.username != "MikeDEV") and (getUserLevel(username) == 4):
@@ -142,6 +152,28 @@ def modifySecurityLevel(ctx, username, user_level):
         ctx.send_msg(f"You don't have permissions to do that so I ignored your request, {ctx.user.username}. The command \"setlevel\" requires level 4 access, you only have level {getUserLevel(ctx.user.username)}.")
 
 
+@meowyMod.command(args=1, aname="announce")
+def makeAnnouncement(ctx, announcement):
+    if getUserLevel(ctx.user.username) >= 3:
+        # Create new request ticket
+        ticketID = registerNewTicket(ctx, "", "announce")
+
+        meowyMod.wss.sendPacket({"cmd": "direct", "val": {"cmd": "announce", "val": announcement}, "listener": ticketID})
+    else:
+        ctx.send_msg(f"You don't have permissions to do that so I ignored your request, {ctx.user.username}. The command \"announce\" requires level 3 or higher access, you only have level {getUserLevel(ctx.user.username)}.")
+
+
+@meowyMod.command(args=2, aname="warn")
+def warnUser(ctx, username, warning):
+    if getUserLevel(ctx.user.username) >= 1:
+        # Create new request ticket
+        ticketID = registerNewTicket(ctx, username, "warn")
+
+        meowyMod.wss.sendPacket({"cmd": "direct", "val": {"cmd": "alert", "val": {"username": username, "p": warning}}, "listener": ticketID})
+    else:
+        ctx.send_msg(f"You don't have permissions to do that so I ignored your request, {ctx.user.username}. The command \"warn\" requires level 1 or higher access, you only have level {getUserLevel(ctx.user.username)}.")
+
+
 @meowyMod.command(args=1, aname="kick")
 def kickUser(ctx, username):
     if getUserLevel(ctx.user.username) >= 1:
@@ -151,6 +183,10 @@ def kickUser(ctx, username):
         
         if (username == "MeowyMod") and (not ctx.user.username == "MikeDEV"):
             ctx.send_msg(f"Sorry {ctx.user.username}, I will not disconnect myself.")
+            return
+        
+        if username == "Discord":
+            ctx.send_msg(f"Sorry {ctx.user.username}, I am not allowed to disconnect the Discord bridge.")
             return
         
         # Create new request ticket
@@ -172,6 +208,10 @@ def banUser(ctx, username):
             ctx.send_msg(f"Sorry {ctx.user.username}, I will not ban myself.")
             return
         
+        if username == "Discord":
+            ctx.send_msg(f"Sorry {ctx.user.username}, I am not allowed to ban the Discord bridge.")
+            return
+        
         # Create new request ticket
         ticketID = registerNewTicket(ctx, username, "ban")
 
@@ -189,6 +229,10 @@ def ipBanUser(ctx, username):
         
         if username == "MeowyMod":
             ctx.send_msg(f"Sorry {ctx.user.username}, I will not IP ban myself.")
+            return
+        
+        if username == "Discord":
+            ctx.send_msg(f"Sorry {ctx.user.username}, I am not allowed to IP ban the Discord bridge.")
             return
         
         # Create new request ticket
