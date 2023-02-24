@@ -1,4 +1,5 @@
 from dotenv import load_dotenv
+import pymongo
 import update_check as updater
 from MeowerBot import Bot
 import requests
@@ -6,16 +7,47 @@ import os
 import time
 
 # Version tracker
-version = "1.1.1"
+version = "1.1.2"
+
+# Load environment keys
+if not load_dotenv():
+    print("Failed to load .env keys, exiting.")
+    exit()
 
 # Create instance of bot
 meowyMod = Bot()
 
-# Cache user account levels
-userLevels = dict()
-
 # Keep track of processing requests
 tickets = dict()
+
+# Prepare DB connection
+print(f"Connecting to database \"{os.getenv('SERVER_DB', 'mongodb://localhost:27017')}\"...")
+dbclient = pymongo.MongoClient(os.getenv("SERVER_DB", "mongodb://localhost:27017"))
+meowerdb = None
+
+# Check DB connection status
+try:
+    dbclient.server_info():
+    print("Connected to database!")
+    meowerdb = dbclient.meowerserver
+except pymongo.errors.ServerSelectionTimeoutError as err:
+    print(f"Failed to connect to database: \"{err}\"!")
+    exit()
+
+
+# DB methods
+def getUserLevel(self, username):
+    return meowerdb.usersv0.find_one({"_id": username})["lvl"]
+
+
+def modifyUserLevel(self, username, newlevel):
+    return (meowerdb.usersv0.update_one({"_id": username}, {"$set": {"lvl": newlevel}})).matched_count > 0
+
+
+def isUserValid(self, username):
+    if meowerdb.usersv0.find_one({"_id": username}):
+        return True
+    return False
 
 
 # Restart script
@@ -38,16 +70,6 @@ def shutdown():
 
     print(f"MeowyMod {version} going away now...")
     exit()
-
-
-# Function for getting user permission level
-def getUserLevel(ctx):
-    # Cache the user's permissions level
-    if ctx.user.username not in userLevels:
-        response = requests.get(f"{os.getenv('SERVER_API')}/users/{ctx.user.username}")
-        data = response.json()
-        userLevels[ctx.user.username] = data["lvl"]
-    return userLevels[ctx.user.username]
 
 
 def registerNewTicket(ctx, username, method):
@@ -78,7 +100,7 @@ def quack(ctx):
 @meowyMod.command(args=0, aname="help")
 def help(ctx):
     ctx.send_msg(
-        " - help: this message.\n - meow: another fun message!\n - about: Learn a little about me!\n - refresh: Clean up my cached user levels!\n - kick (username)\n - ban (username)\n - ipban (username)\n - pardon (username)\n - ippardon (username)\n - update\n - shutdown\n - reboot")
+        " - help: this message.\n - meow: another fun message!\n - about: Learn a little about me!\n - setlevel (username) (user level)\n - kick (username)\n - ban (username)\n - ipban (username)\n - pardon (username)\n - ippardon (username)\n - update\n - shutdown\n - reboot")
 
 
 @meowyMod.command(args=0, aname="about")
@@ -87,75 +109,121 @@ def about(ctx):
         f"MeowyMod v{version} \nCreated by @MikeDEV, built using @ShowierData9978's MeowerBot.py library! \n\nI'm a little orange cat with a squeaky toy hammer, and I'm here to keep Meower a safer place! Better watch out, only Meower Mods, Admins, and Sysadmins can use me!\n\nYou can find my source code here: https://github.com/MeowerBots/MeowyMod")
 
 
-@meowyMod.command(args=0, aname="refresh")
-def refresh(ctx):
-    match getUserLevel(ctx):
-        case 4:
-            # Reset userLevels
-            userLevels = dict()
-            ctx.send_msg("I've cleared out my cached userlevels.")
-        case _:
-            ctx.send_msg(f"You're not a sysadmin so I ignored your request, {ctx.user.username}.")
+@meowyMod.command(args=2, aname="setlevel")
+def modifySecurityLevel(ctx, username, user_level):
+    if getUserLevel(ctx.user.username) == 4:
+        if username == "MikeDEV":
+            ctx.send_msg(f"Sorry {ctx.user.username}, But for security reasons, I am not allowed to modify MikeDEV's permissions.")
+            return
+        
+        if username == "MeowyMod":
+            ctx.send_msg(f"Sorry {ctx.user.username}, I am not allowed to modify my own permissions.")
+            return
+        
+        if not isUserValid(username):
+            ctx.send_msg(f"Sorry {ctx.user.username}, I couldn't find the user \"{username}\", so I could not complete your request.")
+            return
+        
+        if (user_level < 0) or (user_level > 4):
+            ctx.send_msg(f"Sorry {ctx.user.username}, But the userlevel {user_level} is invalid, so I could not complete your request. \n\nValid user levels are: \n0 - Normal user, \n1 - Low-level Moderator (Kicks/bans/pardons), \n2 - Mid-level Moderator (IP kicks/bans/pardons), \n3 - High-Level moderator (Announcements), \n4 - Administrator.")
+            return
+        
+        if (ctx.user.username != "MikeDEV") and (getUserLevel(username) == 4):
+            ctx.send_msg(f"Sorry {ctx.user.username}, But for security reasons, You are not allowed to modify a Administrator's permissions. Only MikeDEV is permitted to modify a Administrator's permissions.")
+            return
+        
+        if not modifyUserLevel(username, user_level):
+            ctx.send_msg(f"Sorry {ctx.user.username}, something went wrong while I was modifying \"{username}\"'s user level. I was unable to complete your request.")
+            return
+        
+        ctx.send_msg(f"{ctx.user.username}, I have updated \"{username}\"'s user level successfully!")
+        
+    else:
+        ctx.send_msg(f"You don't have permissions to do that so I ignored your request, {ctx.user.username}. The command \"setlevel\" requires level 4 access, you only have level {getUserLevel(ctx.user.username)}.")
 
 
 @meowyMod.command(args=1, aname="kick")
 def kickUser(ctx, username):
-    if getUserLevel(ctx) >= 1:
+    if getUserLevel(ctx.user.username) >= 1:
+        if (username == "MikeDEV") and (not ctx.user.username == "MikeDEV"):
+            ctx.send_msg(f"Sorry {ctx.user.username}, Nobody other than himself can disconnect him.")
+            return
+        
+        if (username == "MeowyMod") and (not ctx.user.username == "MikeDEV"):
+            ctx.send_msg(f"Sorry {ctx.user.username}, I will not disconnect myself.")
+            return
+        
         # Create new request ticket
         ticketID = registerNewTicket(ctx, username, "kick")
 
         meowyMod.wss.sendPacket({"cmd": "direct", "val": {"cmd": "kick", "val": username}, "listener": ticketID})
     else:
-        ctx.send_msg(f"You don't have permissions to do that so I ignored your request, {ctx.user.username}.")
+        ctx.send_msg(f"You don't have permissions to do that so I ignored your request, {ctx.user.username}. The command \"kick\" requires level 1 or higher access, you only have level {getUserLevel(ctx.user.username)}.")
 
 
 @meowyMod.command(args=1, aname="ban")
 def banUser(ctx, username):
-    if getUserLevel(ctx) >= 1:
+    if getUserLevel(ctx.user.username) >= 1:
+        if username == "MikeDEV":
+            ctx.send_msg(f"Sorry {ctx.user.username}, But for security reasons, I am not allowed to ban MikeDEV.")
+            return
+        
+        if username == "MeowyMod":
+            ctx.send_msg(f"Sorry {ctx.user.username}, I will not ban myself.")
+            return
+        
         # Create new request ticket
         ticketID = registerNewTicket(ctx, username, "ban")
 
         meowyMod.wss.sendPacket({"cmd": "direct", "val": {"cmd": "ban", "val": username}, "listener": ticketID})
     else:
-        ctx.send_msg(f"You don't have permissions to do that so I ignored your request, {ctx.user.username}.")
+        ctx.send_msg(f"You don't have permissions to do that so I ignored your request, {ctx.user.username}. The command \"ban\" requires level 1 or higher access, you only have level {getUserLevel(ctx.user.username)}.")
 
 
 @meowyMod.command(args=1, aname="ipban")
 def ipBanUser(ctx, username):
-    if getUserLevel(ctx) >= 2:
+    if getUserLevel(ctx.user.username) >= 2:
+        if username == "MikeDEV":
+            ctx.send_msg(f"Sorry {ctx.user.username}, But for security reasons, I am not allowed to IP ban MikeDEV.")
+            return
+        
+        if username == "MeowyMod":
+            ctx.send_msg(f"Sorry {ctx.user.username}, I will not IP ban myself.")
+            return
+        
         # Create new request ticket
         ticketID = registerNewTicket(ctx, username, "ipban")
 
         meowyMod.wss.sendPacket({"cmd": "direct", "val": {"cmd": "block", "val": username}, "listener": ticketID})
     else:
-        ctx.send_msg(f"You don't have permissions to do that so I ignored your request, {ctx.user.username}.")
+        ctx.send_msg(f"You don't have permissions to do that so I ignored your request, {ctx.user.username}. The command \"ipban\" requires level 2 or higher access, you only have level {getUserLevel(ctx.user.username)}.")
 
 
 @meowyMod.command(args=1, aname="pardon")
 def pardonUser(ctx, username):
-    if getUserLevel(ctx) >= 1:
+    if getUserLevel(ctx.user.username) >= 1:
         # Create new request ticket
         ticketID = registerNewTicket(ctx, username, "pardon")
 
         meowyMod.wss.sendPacket({"cmd": "direct", "val": {"cmd": "pardon", "val": username}, "listener": ticketID})
     else:
-        ctx.send_msg(f"You don't have permissions to do that so I ignored your request, {ctx.user.username}.")
+        ctx.send_msg(f"You don't have permissions to do that so I ignored your request, {ctx.user.username}. The command \"pardon\" requires level 1 or higher access, you only have level {getUserLevel(ctx.user.username)}.")
 
 
 @meowyMod.command(args=1, aname="ippardon")
 def ipPardonUser(ctx, username):
-    if getUserLevel(ctx) >= 2:
+    if getUserLevel(ctx.user.username) >= 2:
         # Create new request ticket
         ticketID = registerNewTicket(ctx, username, "ippardon")
 
         meowyMod.wss.sendPacket({"cmd": "direct", "val": {"cmd": "unblock", "val": username}, "listener": ticketID})
     else:
-        ctx.send_msg(f"You don't have permissions to do that so I ignored your request, {ctx.user.username}.")
+        ctx.send_msg(f"You don't have permissions to do that so I ignored your request, {ctx.user.username}. The command \"ippardon\" requires level 2 or higher access, you only have level {getUserLevel(ctx.user.username)}.")
 
 
 @meowyMod.command(args=0, aname="update")
 def updateCheck(ctx):
-    if getUserLevel(ctx) == 4:
+    if getUserLevel(ctx.user.username) == 4:
         # Check for updates, but better(ish)
         versionHistory = requests.get("https://raw.githubusercontent.com/MeowerBots/MeowyMod/main/versionInfo.json").json()
         if version not in versionHistory["latest"] or version in versionHistory["old"]:
@@ -168,25 +236,25 @@ def updateCheck(ctx):
         else:
             ctx.send_msg(f"Looks like I'm up-to-date! Running v{version} right now.")
     else:
-        ctx.send_msg(f"You don't have permissions to do that so I ignored your request, {ctx.user.username}.")
+        ctx.send_msg(f"You don't have permissions to do that so I ignored your request, {ctx.user.username}. The command \"update\" requires level 4 access, you only have level {getUserLevel(ctx.user.username)}.")
 
 
 @meowyMod.command(args=0, aname="reboot")
 def rebootScript(ctx):
-    if getUserLevel(ctx) == 4:
+    if getUserLevel(ctx.user.username) == 4:
         ctx.send_msg("Oke! I'm rebooting now...")
         restart()
     else:
-        ctx.send_msg(f"You don't have permissions to do that so I ignored your request, {ctx.user.username}.")
+        ctx.send_msg(f"You don't have permissions to do that so I ignored your request, {ctx.user.username}. The command \"reboot\" requires level 4 access, you only have level {getUserLevel(ctx.user.username)}.")
 
 
 @meowyMod.command(args=0, aname="shutdown")
 def shutdownScript(ctx):
-    if getUserLevel(ctx) == 4:
+    if ctx.user.username == "MikeDEV":
         ctx.send_msg("Goodbye! I'm shutting down now...")
         shutdown()
     else:
-        ctx.send_msg(f"You don't have permissions to do that so I ignored your request, {ctx.user.username}.")
+        ctx.send_msg(f"Sorry, the \"shutdown\" command is only allowed for MikeDEV.")
 
 
 # Listener management
@@ -204,20 +272,14 @@ def listenerEventManager(post, bot):
             bot.send_msg(f"MeowyMod v{version} is alive! Use @MeowyMod help for info!")
 
 
-if __name__ == "__main__":
-    # Load environment keys
-    if not load_dotenv():
-        print("Failed to load .env keys, exiting.")
-        exit()
+# Register event listener for tickets and startup message
+meowyMod.callback(listenerEventManager, cbid="__raw__")
 
-    # Register event listener for tickets and startup message
-    meowyMod.callback(listenerEventManager, cbid="__raw__")
+print(f"MeowyMod {version} starting up now...")
 
-    print(f"MeowyMod {version} starting up now...")
-
-    # Run bot
-    meowyMod.run(
-        username=os.getenv("BOT_USERNAME"),
-        password=os.getenv("BOT_PASSWORD"),
-        server=os.getenv("SERVER_CL")
-    )
+# Run bot
+meowyMod.run(
+    username=os.getenv("BOT_USERNAME"),
+    password=os.getenv("BOT_PASSWORD"),
+    server=os.getenv("SERVER_CL")
+)
