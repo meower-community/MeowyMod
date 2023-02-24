@@ -36,15 +36,15 @@ except pymongo.errors.ServerSelectionTimeoutError as err:
 
 
 # DB methods
-def getUserLevel(self, username):
+def getUserLevel(username):
     return meowerdb.usersv0.find_one({"_id": username})["lvl"]
 
 
-def modifyUserLevel(self, username, newlevel):
+def modifyUserLevel(username, newlevel):
     return (meowerdb.usersv0.update_one({"_id": username}, {"$set": {"lvl": newlevel}})).matched_count > 0
 
 
-def isUserValid(self, username):
+def isUserValid(username):
     if meowerdb.usersv0.find_one({"_id": username}):
         return True
     return False
