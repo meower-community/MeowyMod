@@ -27,7 +27,7 @@ meowerdb = None
 
 # Check DB connection status
 try:
-    dbclient.server_info():
+    dbclient.server_info()
     print("Connected to database!")
     meowerdb = dbclient.meowerserver
 except pymongo.errors.ServerSelectionTimeoutError as err:
