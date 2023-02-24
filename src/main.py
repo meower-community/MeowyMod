@@ -100,13 +100,32 @@ def quack(ctx):
 @meowyMod.command(args=0, aname="help")
 def help(ctx):
     ctx.send_msg(
-        " - help: this message.\n - meow: another fun message!\n - about: Learn a little about me!\n - setlevel (username) (user level)\n - kick (username)\n - ban (username)\n - ipban (username)\n - pardon (username)\n - ippardon (username)\n - update\n - shutdown\n - reboot\n - announce \"(message)\"\n - warn (username) \"(message)\"")
+        " - help: this message.\n - meow: another fun message!\n - about: Learn a little about me!\n - setlevel (username) (user level)\n - getlevel (username)\n - kick (username)\n - ban (username)\n - ipban (username)\n - pardon (username)\n - ippardon (username)\n - update\n - shutdown\n - reboot\n - announce \"(message)\"\n - warn (username) \"(message)\"")
 
 
 @meowyMod.command(args=0, aname="about")
 def about(ctx):
     ctx.send_msg(
         f"MeowyMod v{version} \nCreated by @MikeDEV, built using @ShowierData9978's MeowerBot.py library! \n\nI'm a little orange cat with a squeaky toy hammer, and I'm here to keep Meower a safer place! Better watch out, only Meower Mods, Admins, and Sysadmins can use me!\n\nYou can find my source code here: https://github.com/MeowerBots/MeowyMod")
+
+@meowyMod.command(args=1, aname="getlevel")
+def getSecurityLebel(ctx, username):
+    if not isUserValid(username):
+        ctx.send_msg(f"Sorry {ctx.user.username}, I couldn't find the user \"{username}\", so I could not complete your request.")
+        return      
+    
+    match getUserLevel(username):
+        case 0:
+            ctx.send_msg(f"{ctx.user.username}, \"{username}\" is a normal user.")
+        case 1:
+            ctx.send_msg(f"{ctx.user.username}, \"{username}\" is a Low-Level Moderator which can perform account kicks, bans, warnings, and pardons.")
+        case 2:
+            ctx.send_msg(f"{ctx.user.username}, \"{username}\" is a Mid-Level Moderator which can perform IP kicks, bans, and pardons, as well as everything a Level 1 moderator can do.")
+        case 3:
+            ctx.send_msg(f"{ctx.user.username}, \"{username}\" is a High-Level Moderator which can make announcements, as well as everything a Level 2 and 1 moderator can do.")
+        case 4:
+            ctx.send_msg(f"{ctx.user.username}, \"{username}\" is a Administrator which can manage the entire server, as well as everything a Level 3, 2, and 1 moderator can do.")
+
 
 
 @meowyMod.command(args=2, aname="setlevel")
@@ -131,11 +150,11 @@ def modifySecurityLevel(ctx, username, user_level):
         try:
             user_level = int(user_level)
         except:
-            ctx.send_msg(f"Sorry {ctx.user.username}, But the userlevel {user_level} is invalid (not a number), so I could not complete your request. \n\nValid user levels are: \n0 - Normal user, \n1 - Low-level Moderator (Kicks/bans/pardons), \n2 - Mid-level Moderator (IP kicks/bans/pardons), \n3 - High-Level Moderator (Announcements), \n4 - Administrator.")
+            ctx.send_msg(f"Sorry {ctx.user.username}, But the userlevel {user_level} is invalid (not a number), so I could not complete your request. \n\nValid user levels are: \n0 - Normal user, \n1 - Low-level Moderator (Kicks/bans/pardons/warnings), \n2 - Mid-level Moderator (IP kicks/bans/pardons), \n3 - High-Level Moderator (Announcements), \n4 - Administrator.")
             return
         
         if (user_level < 0) or (user_level > 4):
-            ctx.send_msg(f"Sorry {ctx.user.username}, But the userlevel {user_level} is invalid (out of range), so I could not complete your request. \n\nValid user levels are: \n0 - Normal user, \n1 - Low-level Moderator (Kicks/bans/pardons), \n2 - Mid-level Moderator (IP kicks/bans/pardons), \n3 - High-Level Moderator (Announcements), \n4 - Administrator.")
+            ctx.send_msg(f"Sorry {ctx.user.username}, But the userlevel {user_level} is invalid (out of range), so I could not complete your request. \n\nValid user levels are: \n0 - Normal user, \n1 - Low-level Moderator (Kicks/bans/pardons/warnings), \n2 - Mid-level Moderator (IP kicks/bans/pardons), \n3 - High-Level Moderator (Announcements), \n4 - Administrator.")
             return
         
         if (ctx.user.username != "MikeDEV") and (getUserLevel(username) == 4):
