@@ -46,3 +46,5 @@ MeowyMod can run on minimal resources. At least 32MB of RAM and any reasonably c
 * `@MeowyMod ippardon (username)` - Pardons blocked IP addresses for a user on Meower.
 * `@MeowyMod announce (announcement)` - Creates a Meower-wide announcement.
 * `@MeowyMod warn (username) (message)` - Sends a warning message to a user's inbox on Meower.
+* `@MeowyMod setlevel (username) (userlevel 0-4)` - Sets the user's security level.
+* `@MeowyMod getlevel (username)` - Gets the user's security level, and explains the user's permissions.
