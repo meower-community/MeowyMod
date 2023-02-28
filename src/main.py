@@ -7,7 +7,7 @@ import os
 import time
 
 # Version tracker
-version = "1.1.2"
+version = "1.1.3"
 
 # Load environment keys
 if not load_dotenv():
@@ -21,15 +21,17 @@ meowyMod = Bot()
 tickets = dict()
 
 # Prepare DB connection
-print(f"Connecting to database \"{os.getenv('SERVER_DB', 'mongodb://localhost:27017')}\"...")
+print(f"Connecting to database...")
 dbclient = pymongo.MongoClient(os.getenv("SERVER_DB", "mongodb://localhost:27017"))
 meowerdb = None
+ticketdb = None
 
 # Check DB connection status
 try:
     dbclient.server_info()
     print("Connected to database!")
     meowerdb = dbclient.meowerserver
+    ticketdb = dbclient.meowymod
 except pymongo.errors.ServerSelectionTimeoutError as err:
     print(f"Failed to connect to database: \"{err}\"!")
     exit()
@@ -73,21 +75,40 @@ def shutdown():
 
 
 def registerNewTicket(ctx, username, method):
-    ticketID = f"{method} {username} @{round(time.time())}"
+    # Log the ticket
+    ticket_result = ticketdb.tickets.insert_one({
+        "_id": str(time.time()),
+        "request": method,
+        "timestamp": time.time(),
+        "origin": ctx.user.username,
+        "recipient": username,
+        "result": None
+    })
+    
+    ticketID = ticket_result.inserted_id
+    
+    print(f"Creating ticket: {ticketID}")
+    
     tickets[ticketID] = {
         "origin": ctx.user.username,
         "recipient": username
     }
-    print(f"Creating new event ticket: \"{ticketID}\"")
+    
     return ticketID
 
 
 def resolveTicket(ticketID, status):
     if not ticketID in tickets:
         print(f"Invalid ticket ID \"{ticketID}\", exiting resolveTicket method")
-    print(f"Ticket \"{ticketID}\" resolving with status {status}")
+    
+    print(f"Ticket {ticketID} resolving with status {status}")
+    
     meowyMod.send_msg(
-        f"@{tickets[ticketID]['origin']} I have processed the request \"{ticketID}\" with result {status}!")
+        f"@{tickets[ticketID]['origin']} I have processed the your request with result {status}!")
+    
+    # Log the ticket result
+    ticket_result = ticketdb.tickets.update_one({"_id": ticketID}, {"$set": {"result": status}})
+    
     del tickets[ticketID]
 
 
@@ -159,6 +180,10 @@ def modifySecurityLevel(ctx, username, user_level):
         
         if (ctx.user.username != "MikeDEV") and (getUserLevel(username) == 4):
             ctx.send_msg(f"Sorry {ctx.user.username}, But for security reasons, You are not allowed to modify a Administrator's permissions. Only MikeDEV is permitted to modify a Administrator's permissions.")
+            return
+        
+        if (ctx.user.username != "MikeDEV") and (user_level == 4):
+            ctx.send_msg(f"Sorry {ctx.user.username}, But for security reasons, You are not allowed to make someone a Administrator. Only MikeDEV can make people Administrators.")
             return
         
         if not modifyUserLevel(username, user_level):
@@ -341,8 +366,12 @@ meowyMod.callback(listenerEventManager, cbid="__raw__")
 print(f"MeowyMod {version} starting up now...")
 
 # Run bot
-meowyMod.run(
-    username=os.getenv("BOT_USERNAME"),
-    password=os.getenv("BOT_PASSWORD"),
-    server=os.getenv("SERVER_CL")
-)
+try:
+    meowyMod.run(
+        username=os.getenv("BOT_USERNAME"),
+        password=os.getenv("BOT_PASSWORD"),
+        server=os.getenv("SERVER_CL")
+    )
+except KeyboardInterrupt:
+    print("Detecting interrupt, going away now...")
+    shutdown()
