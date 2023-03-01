@@ -7,7 +7,7 @@ import os
 import time
 
 # Version tracker
-version = "1.1.3"
+version = "1.1.3-dev1"
 
 # Load environment keys
 if not load_dotenv():
@@ -25,6 +25,7 @@ print(f"Connecting to database...")
 dbclient = pymongo.MongoClient(os.getenv("SERVER_DB", "mongodb://localhost:27017"))
 meowerdb = None
 ticketdb = None
+netlogdb = None
 
 # Check DB connection status
 try:
@@ -32,6 +33,7 @@ try:
     print("Connected to database!")
     meowerdb = dbclient.meowerserver
     ticketdb = dbclient.meowymod
+    netlogdb = dbclient.netlog
 except pymongo.errors.ServerSelectionTimeoutError as err:
     print(f"Failed to connect to database: \"{err}\"!")
     exit()
@@ -50,6 +52,13 @@ def isUserValid(username):
     if meowerdb.usersv0.find_one({"_id": username}):
         return True
     return False
+
+
+def findOtherUsersOnIp(username):
+    data = meowerdb.netlog.find_one({"last_user": username})
+    if data:
+        return data["users"]
+    return None
 
 
 # Restart script
@@ -121,7 +130,7 @@ def quack(ctx):
 @meowyMod.command(args=0, aname="help")
 def help(ctx):
     ctx.send_msg(
-        " - help: this message.\n - meow: another fun message!\n - about: Learn a little about me!\n - setlevel (username) (user level)\n - getlevel (username)\n - kick (username)\n - ban (username)\n - ipban (username)\n - pardon (username)\n - ippardon (username)\n - update\n - shutdown\n - reboot\n - announce \"(message)\"\n - warn (username) \"(message)\"")
+        " - help: this message.\n - meow: another fun message!\n - about: Learn a little about me!\n - setlevel (username) (user level)\n - getlevel (username)\n - kick (username)\n - ban (username)\n - ipban (username)\n - pardon (username)\n - ippardon (username)\n - update\n - shutdown\n - reboot\n - announce \"(message)\"\n - warn (username) \"(message)\"\n - similarusers (username)")
 
 
 @meowyMod.command(args=0, aname="about")
@@ -196,6 +205,19 @@ def modifySecurityLevel(ctx, username, user_level):
         ctx.send_msg(f"You don't have permissions to do that so I ignored your request, {ctx.user.username}. The command \"setlevel\" requires level 4 access, you only have level {getUserLevel(ctx.user.username)}.")
 
 
+@meowyMod.command(args=1, aname="similarusers")
+def findSimilarUsers(ctx, username):
+    if getUserLevel(ctx.user.username) >= 2:
+        users = findOtherUsersOnIp(username)
+        if not users:
+            ctx.send_msg(f"Seems like something went wrong while looking up {username} in the DB netlog.")
+        else:
+            ctx.send_msg(f"Here is a list of similar accounts on {username}'s IP: {str(users)}")
+    else:
+        ctx.send_msg(f"You don't have permissions to do that so I ignored your request, {ctx.user.username}. The command \"similarusers\" requires level 2 or higher access, you only have level {getUserLevel(ctx.user.username)}.")
+        
+        
+        
 @meowyMod.command(args=1, aname="announce")
 def makeAnnouncement(ctx, announcement):
     if getUserLevel(ctx.user.username) >= 3:
