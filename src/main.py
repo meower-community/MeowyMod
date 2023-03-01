@@ -32,10 +32,6 @@ try:
     print("Connected to database!")
     meowerdb = dbclient.meowerserver
     ticketdb = dbclient.meowymod
-<<<<<<< HEAD
-    netlogdb = dbclient.meowerserver.netlog
-=======
->>>>>>> parent of a49cdf2 (add feature to look for similar users on IP)
 except pymongo.errors.ServerSelectionTimeoutError as err:
     print(f"Failed to connect to database: \"{err}\"!")
     exit()
@@ -55,17 +51,6 @@ def isUserValid(username):
         return True
     return False
 
-
-<<<<<<< HEAD
-def findOtherUsersOnIp(username):
-    data = netlogdb.find_one({"last_user": username})
-    if data:
-        return data["users"]
-    return None
-
-
-=======
->>>>>>> parent of a49cdf2 (add feature to look for similar users on IP)
 # Restart script
 def restart():
     print("Shutting down websocket")
