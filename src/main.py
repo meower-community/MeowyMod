@@ -33,7 +33,7 @@ try:
     print("Connected to database!")
     meowerdb = dbclient.meowerserver
     ticketdb = dbclient.meowymod
-    netlogdb = dbclient.netlog
+    netlogdb = dbclient.meowerserver.netlog
 except pymongo.errors.ServerSelectionTimeoutError as err:
     print(f"Failed to connect to database: \"{err}\"!")
     exit()
@@ -55,7 +55,7 @@ def isUserValid(username):
 
 
 def findOtherUsersOnIp(username):
-    data = meowerdb.netlog.find_one({"last_user": username})
+    data = netlogdb.find_one({"last_user": username})
     if data:
         return data["users"]
     return None
