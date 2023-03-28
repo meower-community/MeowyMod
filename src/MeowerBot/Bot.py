@@ -1,7 +1,7 @@
 import threading
 import shlex
 
-from .Cloudlink import cloudlink # WTF Showier
+from .cloudlink import cloudlink
 import sys
 
 import json
@@ -39,6 +39,11 @@ class Bot:
         "__meowerbot__cloudlink_trust",
     ]
 
+    BOT_NO_PMSG_RESPONSE = [
+        "I:500 | Bot",
+        "I: 500 | Bot"
+    ]
+
     def _t_ping(self):
         while True:
             time.sleep(60)
@@ -46,7 +51,7 @@ class Bot:
             self.wss.sendPacket({"cmd": "ping", "val": ""})
 
     def __init__(self, prefix=None, autoreload: int or None = None): #type: ignore
-        self.wss = cloudlink.CloudLink()
+        self.wss = cloudlink()
         self.callbacks = {}
 
         self.wss.callback(
@@ -104,7 +109,11 @@ class Bot:
         if type(e) == WebSocketConnectionClosedException and self.autoreload:
             self.__handle_close__()
             return
-    
+
+
+        
+
+
     def _debug_fix(self, packet):
         packet = json.loads(packet)  # Server bug workaround
 
@@ -292,7 +301,7 @@ class Bot:
             self.run_cb(packet["cmd"], args=(packet["val"], listener))
 
         
-        if packet["cmd"] == "pmsg":
+        if (packet["cmd"] == "pmsg") and  (packet["val"] not in self.BOT_NO_PMSG_RESPONSE):
             self.wss.sendPacket({
                 "cmd": "pmsg",
                 "val": "I:500 | Bot",

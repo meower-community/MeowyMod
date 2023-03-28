@@ -7,7 +7,7 @@ import os
 import time
 
 # Version tracker
-version = "1.1.3"
+version = "1.1.4"
 
 # Load environment keys
 if not load_dotenv():
@@ -115,6 +115,13 @@ def resolveTicket(ticketID, status):
 @meowyMod.command(args=0, aname="meow")
 def quack(ctx):
     ctx.send_msg("Meow!")
+
+
+@meowyMod.command(args=0, aname="userlist")
+def get_userlist(ctx):
+    ulist_size = len(self.wss.statedata["ulist"]["usernames"])
+    ulist = ", ".join(self.wss.statedata["ulist"]["usernames"])
+    ctx.send_msg(f"There's {ulist_size} user(s) online right now. {ulist}")
 
 
 @meowyMod.command(args=0, aname="help")
