@@ -119,15 +119,15 @@ def quack(ctx):
 
 @meowyMod.command(args=0, aname="userlist")
 def get_userlist(ctx):
-    ulist_size = len(self.wss.statedata["ulist"]["usernames"])
-    ulist = ", ".join(self.wss.statedata["ulist"]["usernames"])
+    ulist_size = len(meowyMod.wss.statedata["ulist"]["usernames"])
+    ulist = ", ".join(meowyMod.wss.statedata["ulist"]["usernames"])
     ctx.send_msg(f"There's {ulist_size} user(s) online right now. {ulist}")
 
 
 @meowyMod.command(args=0, aname="help")
 def help(ctx):
     ctx.send_msg(
-        " - help: this message.\n - meow: another fun message!\n - about: Learn a little about me!\n - setlevel (username) (user level)\n - getlevel (username)\n - kick (username)\n - ban (username)\n - ipban (username)\n - pardon (username)\n - ippardon (username)\n - update\n - shutdown\n - reboot\n - announce \"(message)\"\n - warn (username) \"(message)\"")
+        " - help: this message.\n - meow: another fun message!\n - about: Learn a little about me!\n - setlevel (username) (user level)\n - getlevel (username)\n - kick (username)\n - ban (username)\n - ipban (username)\n - pardon (username)\n - ippardon (username)\n - update\n - shutdown\n - reboot\n - announce \"(message)\"\n - warn (username) \"(message)\" \n - userlist")
 
 
 @meowyMod.command(args=0, aname="about")
