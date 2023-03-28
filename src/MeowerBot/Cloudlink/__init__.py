@@ -1,1 +1,1 @@
-from .cloudlink import *
+from .cloudlink import CloudLink as cloudlink
