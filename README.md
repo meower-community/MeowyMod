@@ -1,5 +1,7 @@
 # MeowyMod
-Source code for the Meower Administrative robot, "MeowyMod". A tool to replace the aging Meower Vanilla moderator functionality.
+Source code for the Meower Administrative robot, "MeowyMod". A tool to replace the aging Meower Vanilla moderator functionality. 
+
+Note: This tool will be retired in the future since Svelte 1.6 was released. 
 
 (Formerly known as "DuckWithBanHammerBot". *Yes, that was indeed the original name. Please don't ask why.*)
 
